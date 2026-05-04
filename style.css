@@ -1,0 +1,142 @@
+:root {
+    --bg: #0f0f0f;
+    --fg: #e0e0e0;
+    --accent: #555;
+    --border: #333;
+    --font: 'Courier New', Courier, monospace;
+}
+
+body {
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: var(--font);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    line-height: 1.6;
+}
+
+#app-container {
+    width: 100%;
+    max-width: 600px;
+    padding: 2rem;
+    border: 1px solid var(--border);
+    box-shadow: 0 0 20px rgba(0,0,0,0.8);
+    background: #151515;
+}
+
+h1, h2, h3 {
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+}
+
+.screen {
+    display: none;
+}
+.screen.active {
+    display: block;
+    animation: fadeIn 0.5s ease;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.split {
+    flex-direction: row;
+    gap: 1rem;
+}
+
+.split > div {
+    flex: 1;
+}
+
+label {
+    font-size: 0.8rem;
+    color: #888;
+    margin-bottom: 0.3rem;
+    text-transform: uppercase;
+}
+
+input, select, textarea, button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--fg);
+    padding: 0.8rem;
+    font-family: var(--font);
+    outline: none;
+}
+
+input:focus, select:focus, textarea:focus {
+    border-color: #888;
+}
+
+textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+button {
+    cursor: pointer;
+    width: 100%;
+    background: var(--border);
+    text-transform: uppercase;
+    font-weight: bold;
+    transition: background 0.3s;
+}
+
+button:hover {
+    background: var(--accent);
+}
+
+.sys-warning {
+    color: #666;
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.quiz-header, .quiz-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.timer {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #ff4444;
+}
+
+.option-btn {
+    display: block;
+    text-align: left;
+    margin-bottom: 0.5rem;
+    background: #1a1a1a;
+}
+.option-btn.selected {
+    border-color: var(--fg);
+    background: #333;
+}
+
+#time-analysis-list {
+    list-style-type: none;
+    padding: 0;
+}
+#time-analysis-list li {
+    border-bottom: 1px dotted var(--border);
+    padding: 0.5rem 0;
+    display: flex;
+    justify-content: space-between;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
