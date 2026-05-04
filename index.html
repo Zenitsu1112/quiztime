@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QUIZ TIME // THE VOID</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app-container">
+        <div id="setup-screen" class="screen active">
+            <h1>QUIZ TIME</h1>
+            <div class="form-group">
+                <label>Test Name</label>
+                <input type="text" id="test-name" placeholder="Enter test name...">
+            </div>
+            
+            <div class="form-group split">
+                <div>
+                    <label>Time (Minutes)</label>
+                    <input type="number" id="test-time" value="10" min="1">
+                </div>
+                <div>
+                    <label>Correct Mark (+)</label>
+                    <input type="number" id="mark-correct" value="4">
+                </div>
+                <div>
+                    <label>Wrong Mark (-)</label>
+                    <input type="number" id="mark-wrong" value="1">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Source Material</label>
+                <select id="source-type" onchange="toggleSource()">
+                    <option value="topic">Topic (AI Generate)</option>
+                    <option value="text">Paste Text</option>
+                    <option value="file">Upload File (PDF/IMG)</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="source-input-container">
+                <textarea id="source-input" placeholder="Enter a topic for the AI..."></textarea>
+                <input type="file" id="file-input" style="display: none;" accept=".pdf,image/*">
+                <small class="sys-warning">Note: File parsing & AI require API integration.</small>
+            </div>
+
+            <button id="start-btn" onclick="initializeQuiz()">INITIALIZE</button>
+        </div>
+
+        <div id="quiz-screen" class="screen">
+            <div class="quiz-header">
+                <h2 id="display-test-name">Test</h2>
+                <div class="timer" id="timer-display">00:00</div>
+            </div>
+            
+            <div id="question-container">
+                <h3 id="question-text">Loading reality...</h3>
+                <div id="options-container"></div>
+            </div>
+            
+            <div class="quiz-footer">
+                <span id="progress-text">1 / X</span>
+                <button onclick="nextQuestion()" id="next-btn">NEXT</button>
+            </div>
+        </div>
+
+        <div id="results-screen" class="screen">
+            <h1>ANALYSIS</h1>
+            <div class="score-card">
+                <h2>Total Score: <span id="final-score">0</span></h2>
+                <p>Accuracy: <span id="accuracy">0</span>%</p>
+            </div>
+            
+            <h3>Time per Question</h3>
+            <ul id="time-analysis-list"></ul>
+            
+            <button onclick="location.reload()">RETAKE THE LOOP</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
