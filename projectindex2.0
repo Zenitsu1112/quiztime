@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QUIZ TIME // THE VOID</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 0;
+      transition: background 0.3s, color 0.3s;
+    }
+    body.dark {
+      background: #121212;
+      color: #f4f4f4;
+    }
+    #app-container {
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+    }
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; }
+    input, select, textarea, button {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background: #4caf50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover { background: #45a049; }
+    .quiz-header, .quiz-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .timer { font-weight: bold; }
+    .progress-bar {
+      width: 100%;
+      height: 10px;
+      background: #ddd;
+      border-radius: 5px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    #progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #4caf50, #81c784);
+      transition: width 0.3s ease;
+    }
+    #options-container button {
+      display: block;
+      margin: 5px 0;
+      background: #2196f3;
+    }
+    #options-container button:hover { background: #1976d2; }
+    #review-list li { margin: 10px 0; }
+    #dark-toggle {
+      background: #333;
+      color: white;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app-container">
+    <button id="dark-toggle">Toggle Dark Mode</button>
+
+    <!-- Setup Screen -->
+    <div id="setup-screen" class="screen active">
+      <h1>QUIZ TIME</h1>
+      <div class="form-group">
+        <label>Test Name</label>
+        <input type="text" id="test-name" placeholder="Enter test name...">
+      </div>
+      <div class="form-group split">
+        <div>
+          <label>Time (Minutes)</label>
+          <input type="number" id="test-time" value="10" min="1">
+        </div>
+        <div>
+          <label>Correct Mark (+)</label>
+          <input type="number" id="mark-correct" value="4">
+        </div>
+        <div>
+          <label>Wrong Mark (-)</label>
+          <input type="number" id="mark-wrong" value="1">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Source Material</label>
+        <select id="source-type">
+          <option value="topic">Topic (AI Generate)</option>
+          <option value="text">Paste Text</option>
+          <option value="file">Upload File (PDF/IMG)</option>
+        </select>
+      </div>
+      <div class="form-group" id="source-input-container">
+        <textarea id="source-input" placeholder="Enter a topic for the AI..."></textarea>
+        <input type="file" id="file-input" style="display: none;" accept=".pdf,image/*">
+        <small class="sys-warning">Note: File parsing & AI require API integration.</small>
+      </div>
+
+      <!-- Manual Question Builder -->
+      <div id="question-builder" class="form-group">
+        <h3>Add Your Own Question</h3>
+        <input type="text" id="custom-question" placeholder="Enter your question...">
+        <div id="options-builder">
+          <input type="text" class="option-input" placeholder="Option A">
+          <input type="text" class="option-input" placeholder="Option B">
+          <input type="text" class="option-input" placeholder="Option C">
+          <input type="text" class="option-input" placeholder="Option D">
+        </div>
+        <label>Correct Answer</label>
+        <select id="correct-answer">
+          <option value="A">Option A</option>
+          <option value="B">Option B</option>
+          <option value="C">Option C</option>
+          <option value="D">Option D</option>
+        </select>
+        <button onclick="addCustomQuestion()">Add Question</button>
+      </div>
+
+      <button id="start-btn" onclick="initializeQuiz()">INITIALIZE</button>
+    </div>
+
+    <!-- Quiz Screen -->
+    <div id="quiz-screen" class="screen">
+      <div class="quiz-header">
+        <h2 id="display-test-name">Test</h2>
+        <div class="timer" id="timer-display">00:00</div>
+      </div>
+      <div class="progress-bar"><div id="progress-fill"></div></div>
+      <div id="question-container">
+        <h3 id="question-text">Loading reality...</h3>
+        <div id="options-container"></div>
+      </div>
+      <div class="quiz-footer">
+        <span id="progress-text">1 / X</span>
+        <button onclick="nextQuestion()" id="next-btn">NEXT</button>
+      </div>
+    </div>
+
+    <!-- Results Screen -->
+    <div id="results-screen" class="screen">
+      <h1>ANALYSIS</h1>
+      <div class="score-card">
+        <h2>Total Score: <span id="final-score">0</span></h2>
+        <p>Accuracy: <span id="accuracy">0</span>%</p>
+      </div>
+      <h3>Time per Question</h3>
+      <ul id="time-analysis-list"></ul>
+      <div id="review-section">
+        <h3>Question Review</h3>
+        <ul id="review-list"></ul>
+      </div>
+      <button onclick="location.reload()">RETAKE THE LOOP</button>
+    </div>
+  </div>
+
+  <script>
+    let customQuestions = JSON.parse(localStorage.getItem("customQuestions")) || [];
+    let quizQuestions = [];
+    let currentQuestionIndex = 0;
+    let userAnswers = [];
+    let score = 0;
+    let timerInterval;
+    let timePerQuestion = [];
+
+    document.getElementById("dark-toggle").addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+    });
+
+    function addCustomQuestion() {
+      const questionText = document.getElementById("custom-question").value;
+      const options = [...document.querySelectorAll(".option-input")].map(o => o.value);
+      const correct = document.getElementById("correct-answer").value;
+      if (!questionText || options.some(o => !o)) {
+        alert("Please fill in all fields!");
+        return;
+      }
+      customQuestions.push({ text: questionText, options, correct });
+      localStorage.setItem("customQuestions", JSON.stringify(customQuestions));
+      alert("Question added successfully!");
+      document.getElementById("custom-question").value = "";
+      document.querySelectorAll(".option-input").forEach(o => o.value = "");
+    }
+
+    function initializeQuiz() {
+      quizQuestions = shuffleArray([...customQuestions]); // Add AI-generated later
+      if (quizQuestions.length === 0) {
+        alert("No questions available!");
+        return;
+      }
+      document.getElementById("setup-screen").classList.remove("active");
+      document.getElementById("quiz-screen").classList.add("active");
+      document.getElementById("display-test-name").textContent = document.getElementById("test-name").value || "Test";
+      startTimer(parseInt(document.getElementById("test-time").value));
+      loadQuestion();
+    }
+
+    function loadQuestion() {
+      const q = quizQuestions[currentQuestionIndex];
+      document.getElementById("question-text").textContent = q.text;
+      const optionsContainer = document.getElementById("options-container");
+      optionsContainer.innerHTML = "";
+      shuffleArray(q.options).forEach((opt, i) => {
+        const btn = document.createElement("button");
+        btn.textContent = opt;
+        btn.onclick = () => selectAnswer(opt);
+        optionsContainer.appendChild
