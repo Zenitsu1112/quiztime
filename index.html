@@ -8,6 +8,7 @@
 </head>
 <body>
     <div id="app-container">
+        <!-- SETUP SCREEN -->
         <div id="setup-screen" class="screen active">
             <h1>QUIZ TIME</h1>
             <div class="form-group">
@@ -42,12 +43,14 @@
             <div class="form-group" id="source-input-container">
                 <textarea id="source-input" placeholder="Enter a topic for the AI..."></textarea>
                 <input type="file" id="file-input" style="display: none;" accept=".pdf,image/*">
-                <small class="sys-warning">Note: File parsing & AI require API integration.</small>
+                <small class="sys-warning">Note: Using the File option requires a backend implementation. Topic and Paste Text work directly in-browser via Hugging Face.</small>
             </div>
 
-            <button id="start-btn" onclick="initializeQuiz()">INITIALIZE</button>
+            <!-- Fixed: ID changed to 'start-quiz-btn' to connect with script.js loading states -->
+            <button id="start-quiz-btn" onclick="initializeQuiz()">INITIALIZE</button>
         </div>
 
+        <!-- QUIZ ENGINE SCREEN -->
         <div id="quiz-screen" class="screen">
             <div class="quiz-header">
                 <h2 id="display-test-name">Test</h2>
@@ -61,10 +64,15 @@
             
             <div class="quiz-footer">
                 <span id="progress-text">1 / X</span>
-                <button onclick="nextQuestion()" id="next-btn">NEXT</button>
+                <div class="nav-buttons">
+                    <!-- Added: Prev button to utilize script.js navigation features -->
+                    <button onclick="prevQuestion()" id="prev-btn">PREV</button>
+                    <button onclick="nextQuestion()" id="next-btn">NEXT</button>
+                </div>
             </div>
         </div>
 
+        <!-- METRIC ANALYSIS SCREEN -->
         <div id="results-screen" class="screen">
             <h1>ANALYSIS</h1>
             <div class="score-card">
