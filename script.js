@@ -1,9 +1,11 @@
-// The State of Things
+// ==========================================
+// 1. THE STATE OF THINGS
+// ==========================================
 let state = {
     questions: [],
     currentIndex: 0,
-    answers: [], // stores selected option index
-    timestamps: [], // stores time taken per question
+    answers: [],           // Stores selected option index (0, 1, 2, 3)
+    timestamps: [],        // Stores cumulative milliseconds taken per question
     timeLeft: 0,
     timerInterval: null,
     questionStartTime: 0,
@@ -14,7 +16,9 @@ let state = {
     }
 };
 
-// UI Toggle for Input Type
+// ==========================================
+// 2. UI TRANSITIONS & SOURCE TOGGLING
+// ==========================================
 function toggleSource() {
     const type = document.getElementById('source-type').value;
     const input = document.getElementById('source-input');
@@ -30,18 +34,24 @@ function toggleSource() {
     }
 }
 
-// Kick off the illusion
+function switchScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+
+// ==========================================
+// 3. QUIZ INITIALIZATION & CORE LOOP
+// ==========================================
 async function initializeQuiz() {
-    const timeMins = parseInt(document.getElementById('test-time').value);
+    const timeMins = parseInt(document.getElementById('test-time').value) || 10;
     state.config.name = document.getElementById('test-name').value || "Untitled Construct";
-    state.config.markCorrect = parseFloat(document.getElementById('mark-correct').value);
-    state.config.markWrong = parseFloat(document.getElementById('mark-wrong').value);
+    state.config.markCorrect = parseFloat(document.getElementById('mark-correct').value) || 4;
+    state.config.markWrong = parseFloat(document.getElementById('mark-wrong').value) || 1;
     
-    // In a real app, this is where you call Gemini/OpenAI or parse the PDF.
-    // I am generating a hardcoded mock array to prove the logic works.
+    // Call the direct Hugging Face API connection
     state.questions = await mockAIGeneration(); 
 
-    if (state.questions.length === 0) return alert("No questions generated.");
+    if (!state.questions || state.questions.length === 0) return;
 
     state.timeLeft = timeMins * 60;
     state.answers = new Array(state.questions.length).fill(null);
@@ -51,7 +61,7 @@ async function initializeQuiz() {
     document.getElementById('display-test-name').innerText = state.config.name;
     
     startTimer();
-    loadQuestion(0);
+    loadQuestion(0, true); // True balances the tracking anchor for the first question
 }
 
 function startTimer() {
@@ -72,9 +82,12 @@ function updateTimerDisplay() {
     document.getElementById('timer-display').innerText = `${m}:${s}`;
 }
 
-function loadQuestion(index) {
+// Fixed: Added isNewQuestion parameter to isolate selection redraws from timeline resets
+function loadQuestion(index, isNewQuestion = true) {
     state.currentIndex = index;
-    state.questionStartTime = Date.now(); // Mark when they started looking at it
+    if (isNewQuestion) {
+        state.questionStartTime = Date.now(); 
+    }
     
     const q = state.questions[index];
     document.getElementById('question-text').innerText = q.text;
@@ -96,23 +109,42 @@ function loadQuestion(index) {
 
 function selectOption(optIndex) {
     state.answers[state.currentIndex] = optIndex;
-    loadQuestion(state.currentIndex); // Re-render to show selection
+    loadQuestion(state.currentIndex, false); // False preserves original question entry timestamp
 }
 
 function nextQuestion() {
-    // Calculate time spent
+    // Commit current question's viewing delta to timeline storage
     const timeSpentMs = Date.now() - state.questionStartTime;
-    state.timestamps[state.currentIndex] += timeSpentMs; // Accumulate in case they go back (if back btn existed)
+    state.timestamps[state.currentIndex] += timeSpentMs;
     
     if (state.currentIndex < state.questions.length - 1) {
-        loadQuestion(state.currentIndex + 1);
+        loadQuestion(state.currentIndex + 1, true);
     } else {
         finishQuiz();
     }
 }
 
+// Optional: Easily navigate backwards if a previous button is mapped in the interface HTML
+function prevQuestion() {
+    const timeSpentMs = Date.now() - state.questionStartTime;
+    state.timestamps[state.currentIndex] += timeSpentMs;
+    
+    if (state.currentIndex > 0) {
+        loadQuestion(state.currentIndex - 1, true);
+    }
+}
+
+// ==========================================
+// 4. METRIC COMPILATION & FINISH
+// ==========================================
 function finishQuiz() {
     clearInterval(state.timerInterval);
+    
+    // Fixed: Capture final remaining question look-time on submission or timeout
+    const finalDeltaMs = Date.now() - state.questionStartTime;
+    if (state.currentIndex < state.timestamps.length) {
+        state.timestamps[state.currentIndex] += finalDeltaMs;
+    }
     
     let score = 0;
     let correctCount = 0;
@@ -138,23 +170,88 @@ function finishQuiz() {
     state.timestamps.forEach((ms, i) => {
         const sec = (ms / 1000).toFixed(1);
         const li = document.createElement('li');
-        li.innerHTML = `<span>Q${i + 1}: ${state.questions[i].text.substring(0, 20)}...</span> <span>${sec}s</span>`;
+        li.innerHTML = `<span>Q${i + 1}: ${state.questions[i].text.substring(0, 25)}...</span> <span>${sec}s</span>`;
         timeList.appendChild(li);
     });
 
     switchScreen('results-screen');
 }
 
-function switchScreen(id) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-}
-
-// Mocking the AI backend. You'd replace this with a fetch() call to a real AI API.
+// ==========================================
+// 5. SERVERLESS HUGGING FACE API CONNECTOR
+// ==========================================
 async function mockAIGeneration() {
-    return [
-        { text: "What is the nature of time?", options: ["A flat circle", "A line", "A cube", "An illusion"], correct: 0 },
-        { text: "Which language executes in the browser natively?", options: ["Python", "Java", "JavaScript", "C++"], correct: 2 },
-        { text: "What does HTML stand for?", options: ["Hyper Text Markup Language", "Heavy Text Machine Language", "Hyperlink Text Module Language", "None of the above"], correct: 0 }
-    ];
+    // ⚠️ TODO: Replace with your actual read token from huggingface.co/settings/tokens
+    const HF_TOKEN = "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"; 
+    
+    const sourceType = document.getElementById('source-type').value;
+    let inputData = "";
+
+    if (sourceType === 'file') {
+        alert("File binary scanning requires a dedicated server node. Please use 'Topic' or 'Raw Text' configurations for standalone execution!");
+        return [];
+    } else {
+        inputData = document.getElementById('source-input').value.trim();
+        if (!inputData) {
+            alert(`Please supply your contextual prompt or ${sourceType} criteria.`);
+            return [];
+        }
+    }
+
+    // Toggle dynamic interface UI loader indicator on initialization action trigger
+    const startBtn = document.getElementById('start-quiz-btn');
+    const originalText = startBtn ? startBtn.innerText : "Start Quiz";
+    if (startBtn) startBtn.innerText = "AI Generation Active...";
+
+    try {
+        const response = await fetch("https://router.huggingface.co/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${HF_TOKEN}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: "Qwen/Qwen2.5-72B-Instruct", 
+                messages: [
+                    {
+                        role: "system",
+                        content: `You are a strict technical quiz engine. Output a valid raw JSON array containing exactly 3 multi-choice questions based directly on the provided user criteria. Do NOT format with markdown syntax, tags, blocks, or wrap in \`\`\`json. Send clean raw parsing tokens only.
+                        
+                        Structural Requirements Blueprint:
+                        [
+                          {
+                            "text": "The complete declarative question?",
+                            "options": ["Choice Sequence A", "Choice Sequence B", "Choice Sequence C", "Choice Sequence D"],
+                            "correct": 0
+                          }
+                        ]`
+                    },
+                    {
+                        role: "user",
+                        content: `Target Subject Parameters: ${inputData}`
+                    }
+                ],
+                max_tokens: 1000,
+                temperature: 0.6
+            })
+        });
+
+        if (!response.ok) throw new Error(`Inference interface rejection: ${response.statusText}`);
+
+        const data = await response.json();
+        const rawOutput = data.choices[0].message.content.trim();
+        
+        // Backup safety strip parameter execution to handle edge case structural wrap leaking
+        const strictCleanJSON = rawOutput.replace(/```json|```/g, "").trim();
+        
+        const outputPayloadArray = JSON.parse(strictCleanJSON);
+        return outputPayloadArray;
+
+    } catch (err) {
+        console.error("Direct connection framework transaction breakdown:", err);
+        alert("Failed to intercept operational token parameters from the model cluster. Verify configuration variables.");
+        return [];
+    } finally {
+        if (startBtn) startBtn.innerText = originalText;
+    }
 }
